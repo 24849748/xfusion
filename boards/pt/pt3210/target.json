@@ -1,0 +1,8 @@
+{
+    "sdks":{
+        "url": "https://gitee.com/ptwsmart/pt3210_sdk.git",
+        "commit": "165466e9ae5a30a3712623120110214cbc88de95",
+        "dir": "pt3210_sdk",
+        "branch": "main"
+    }
+}

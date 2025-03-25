@@ -1,0 +1,42 @@
+; 256k
+LR_IROM1 0x18008000 0x00038000 
+{
+    ; 0x18008000 + 0x00038000 = 0x18040000
+    ER_IROM1 0x18008000 0x00038000
+    {  
+        *.o (RESET, +First)
+        *(InRoot$$Sections)
+        .ANY (+RO)  ; Code，RW-Code，RO-Data
+    }
+
+    ; 48KB
+    RW_IRAM1 0x08000000 0xC000
+    {
+        ;*.o(ram_func*)
+        .ANY (+RW +ZI)
+    }
+
+    RW_IRAM_VECT 0x20000000 EMPTY 0x100
+    {
+        ; sram vector + ?
+    }
+
+    ; 24KB - 256B - 8B = 23736B
+    RW_IRAM2 +0
+    {
+        ;* (ram_func)
+        .ANY (+RW +ZI)  ; RW-Data，ZI-Data
+    }
+
+    ; 4KB
+    RW_IRAM_STACK 0x20005FF8-0x1000 UNINIT 0x1000 ; 4k
+    {
+        .ANY (STACK)
+    }
+
+    ; 16KB
+    RW_IRAM3 0x20006000 0x5800
+    {
+        .ANY (+RW +ZI)
+    }
+}
