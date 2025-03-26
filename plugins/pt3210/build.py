@@ -295,6 +295,7 @@ class pt3210():
             build_env[group_name][key]["md5"] = md5
             logging.info(f"{group_name} {key} 导出完成")
 
+        mdk.save_info(self.DIR_PROJECT / "project_info.json")
         mdk.save_uvoptx(self.PATH_UVOPTX)
         mdk.save_uvprojx(self.PATH_UVPROJX)
         with open(self.DIR_PROJECT / "FileChange.json", "w") as f:

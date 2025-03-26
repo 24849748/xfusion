@@ -1,6 +1,7 @@
 import os
 from jinja2 import Template
 from pathlib import Path
+import json
 
 class MDK:
     info = {
@@ -94,6 +95,10 @@ class MDK:
         info.update({"Groups": groups})
 
         return info
+
+    def save_info(self, name):
+        with open(name, "w", encoding="utf-8") as f:
+            json.dump(self.info, f, indent=4)
 
     def save_uvoptx(self, name):
         with open(self.path_uvoptx_js2, "r", encoding="utf-8") as file:
