@@ -3,11 +3,35 @@ from jinja2 import Template
 from pathlib import Path
 
 class MDK:
+    info = {
+        "project": {
+            "name":"",
+            "sct":"",
+        },
+        "pack": {
+            "Device":"",
+            "Vendor":"",
+            "PackID":"",
+        },
+        "flash": {
+            "FLMNAME":"PT3210_256KB_FLASH_PH", # 烧录算法名称
+        },
+        "MiscControls": [
+            "--C99",
+            "--gnu",
+            "--thumb",
+            "--bss_threshold=0"
+        ],
+        "Define":[],
+        "IncludePath": [],
+        # 这种结构方便使用 dict update
+        "srcs":{
+            "core":[".\\startup.s"],
+        },
+    }
+
     def __init__(self, name) -> None:
         self.DIR_PROJECT = os.path.dirname(os.path.abspath(name))
-
-        self.ctxIncludePath = []
-        self.ctxMiscControls = set()
 
     def to_project_relpaths(self, path):
         """
@@ -123,9 +147,9 @@ class MDK:
 
         paths = self.to_project_relpaths(paths)
         if isinstance(paths, str):
-            self.ctxIncludePath.add(paths)
+            self.info["IncludePath"].append(paths)
         elif isinstance(paths, list):
-            self.ctxIncludePath |= set(paths)
+            self.info["IncludePath"] += paths
 
     def remove_include_path(self, paths):
         if not paths:

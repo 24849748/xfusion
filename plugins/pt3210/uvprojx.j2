@@ -336,7 +336,7 @@
             <v6WtE>0</v6WtE>
             <v6Rtti>0</v6Rtti>
             <VariousControls>
-              <MiscControls>--c99 --thumb -c --bss_threshold=0 --diag_suppress=1</MiscControls>
+              <MiscControls>{{ MiscControls | join(' ') }}</MiscControls>
               <Define></Define>
               <Undefine></Undefine>
               <IncludePath>{{ IncludePath | join(';') }}</IncludePath>
