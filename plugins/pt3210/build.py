@@ -222,7 +222,7 @@ class pt3210():
                         dirs_exist_ok=True,
                         ignore=boards_copy_ignore)
 
-        mdk = MDK(self.PATH_UVPROJX)
+        mdk = MDK(self.PATH_UVPROJX, api.XF_ROOT / "plugins/pt3210")
         mdk.set_target(self.PROJECT_NAME)
         mdk.set_preinclude(api.XF_PROJECT_PATH / "build/header_config/xfconfig.h")
 

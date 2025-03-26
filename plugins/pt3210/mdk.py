@@ -30,8 +30,10 @@ class MDK:
         },
     }
 
-    def __init__(self, name) -> None:
+    def __init__(self, name, path_js2, last_info=None) -> None:
         self.DIR_PROJECT = os.path.dirname(os.path.abspath(name))
+        self.path_uvoptx_js2 = Path(path_js2) / "uvoptx.j2"
+        self.path_uvprojx_js2 = Path(path_js2) / "uvprojx.j2"
 
     def to_project_relpaths(self, path):
         """
@@ -99,12 +101,13 @@ class MDK:
         pass
 
     def save_uvprojx(self, name):
-        with open("./uvprojx.j2", "r", encoding="utf-8") as file:
+        self.info["MiscControls"] = list(set(self.info["MiscControls"]))
+        self.info["IncludePath"] = list(set(self.info["IncludePath"]))
+        with open(self.path_uvprojx_js2, "r", encoding="utf-8") as file:
             uvprojx_j2 = file.read()
 
         template = Template(uvprojx_j2)
         info = self.__project_info_launch(self.info)
-        print("lanuch", info)
         result = template.render(info)
 
         with open(name, "w", encoding="utf-8") as file:
