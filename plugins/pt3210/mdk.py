@@ -19,6 +19,7 @@ class MDK:
             "--C99",
             "--gnu",
             "--thumb",
+            "--diag_suppress=1",
             "--bss_threshold=0"
         ],
         "Define":[],
@@ -141,7 +142,20 @@ class MDK:
     def remove_group(self, group):
         self.info["srcs"].pop(group, None)
 
-    def set_sw_param(self, program_info:dict):
+    def set_sw_param(self, algo_start:str, algo_size:str,
+                     flm_path:str, flm_start:str, flm_size:str):
+        def hex_prepare(value):
+            """ 去除 0x 及 多余的 0 """
+            return value.lstrip("0x").lstrip("0") or "0"
+        flm_name = os.path.basename(flm_path).split(".")[0]
+        program_info = {
+            "algo_start":hex_prepare(algo_start),
+            "algo_size": hex_prepare(algo_size),
+            "flm_name": flm_name,
+            "flm_path": flm_path,
+            "flm_start": hex_prepare(flm_start),
+            "flm_size": hex_prepare(flm_size),
+        }
         self.info.update({"program":program_info})
 
     def update_files(self, group, files):

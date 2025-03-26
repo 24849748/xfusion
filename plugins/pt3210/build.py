@@ -10,17 +10,6 @@ import logging
 
 from rich import print
 
-PROGRAM_INFO = {
-    "PT3210-Hxxx": {
-        "algo_start":"20000000",
-        "algo_size":"3000",
-        "flm_name": "PT3210_256KB_FLASH_PH",
-        "flm_path": ".\\Flash\\PT3210_256KB_FLASH_PH.FLM",
-        "flm_start": "18000000",
-        "flm_size": "40000",
-    }
-}
-
 def change_path_base(base_path, change_path, path):
     """
     将 path 中的 base_path 路径替换为 change_path 路径
@@ -237,7 +226,8 @@ class pt3210():
         mdk.set_target(self.PROJECT_NAME)
         mdk.set_preinclude(api.XF_PROJECT_PATH / "build/header_config/xfconfig.h")
         mdk.set_device("PT3210-Hxxx", "PTW", "PTW.PT3210.1.0.0")
-        mdk.set_sw_param(PROGRAM_INFO["PT3210-Hxxx"])
+        mdk.set_sw_param("0x20000000", "0x3000", ".\\Flash\\PT3210_256KB_FLASH_PH.FLM", 
+                        "0x18000000", "0x40000")
         mdk.set_ScatterFile(self.DIR_PROJECT / "link.sct")
 
         ## 拷贝平台 sdk
