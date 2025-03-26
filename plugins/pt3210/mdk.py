@@ -32,6 +32,8 @@ class MDK:
 
     def __init__(self, name, path_js2, last_info=None) -> None:
         self.DIR_PROJECT = os.path.dirname(os.path.abspath(name))
+        if last_info:
+            self.info = last_info 
         self.path_uvoptx_js2 = Path(path_js2) / "uvoptx.j2"
         self.path_uvprojx_js2 = Path(path_js2) / "uvprojx.j2"
 

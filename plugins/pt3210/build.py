@@ -8,8 +8,6 @@ import hashlib
 from pathlib import Path
 import logging
 
-from rich import print
-
 def change_path_base(base_path, change_path, path):
     """
     将 path 中的 base_path 路径替换为 change_path 路径
@@ -211,6 +209,7 @@ class pt3210():
         self.PATH_UVOPTX = self.DIR_PROJECT / f"{self.PROJECT_NAME}.uvoptx"
         self.PATH_UVPROJX = self.DIR_PROJECT / f"{self.PROJECT_NAME}.uvprojx"
         self.PATH_BUILD_ENV = api.XF_PROJECT_PATH / "build/build_environ.json"
+        self.PATH_PROJ_INFO = self.DIR_PROJECT / "project_info.json"
 
         # build_environ 预处理：
         build_env = get_build_info(self.PATH_BUILD_ENV)
@@ -288,7 +287,7 @@ class pt3210():
 
         mdk.save_uvoptx(self.PATH_UVOPTX)
         mdk.save_uvprojx(self.PATH_UVPROJX)
-        mdk.save_info(self.DIR_PROJECT / "project_info.json")
+        mdk.save_info(self.PATH_PROJ_INFO)
         with open(self.DIR_PROJECT / "FileChange.json", "w") as f:
             json.dump(build_env, f, indent=4)
 
@@ -299,110 +298,117 @@ class pt3210():
 
         self.PROJECT_NAME = os.path.basename(name)
         self.DIR_PROJECT = api.XF_PROJECT_PATH / self.PROJECT_NAME
+        self.PATH_UVOPTX = self.DIR_PROJECT / f"{self.PROJECT_NAME}.uvoptx"
         self.PATH_UVPROJX = self.DIR_PROJECT / f"{self.PROJECT_NAME}.uvprojx"
         self.PATH_BUILD_ENV = "build/build_environ.json"
         self.FILE_MD5 = self.DIR_PROJECT / "FileChange.json"
+        self.PATH_PROJ_INFO = self.DIR_PROJECT / "project_info.json"
 
         # 检查 update 所需文件
         if not self.FILE_MD5.exists():
-            logging.error(f"{self.PROJECT_NAME} 工程的 FileChange.json 文件不存在, xf update 终止！")
+            logging.error(f"缺少 {self.FILE_MD5.as_posix()} 文件, xf update 终止!")
+            return
+        if not self.PATH_PROJ_INFO.exists():
+            logging.error(f"缺少 {self.FILE_MD5.as_posix()} 文件, xf update 终止!")
             return
 
-        uvprojx = MDK(self.PATH_UVPROJX)
-        fc = FileChange(self.PATH_BUILD_ENV, self.FILE_MD5)
-        with open(self.PATH_BUILD_ENV, "r") as f:
-            build_env = json.load(f)
+        with open(self.FILE_MD5, "r") as f:
+            fileChange = json.load(f)
+        with open(self.PATH_PROJ_INFO, "r") as f:
+            proj_info = json.load(f)
 
-        # NOTE: platform 不会常修改，目前不做 update
-        # platform
-        DIR_PLATFORM_WORKSPACE = api.XF_PROJECT_PATH / "platform"
-        if not DIR_PLATFORM_WORKSPACE.exists():
-            shutil.copytree(api.XF_TARGET_PATH / "platform", 
-                            DIR_PLATFORM_WORKSPACE, 
-                            dirs_exist_ok=True)
+        mdk = MDK(self.PATH_UVPROJX, api.XF_ROOT / "plugins/pt3210", proj_info)
+        build_env = get_build_info(self.PATH_BUILD_ENV)
+        build_env["public_port"]["ports"] = build_env["public_port"].pop("pt3210")
 
-        key = "platform"
-        srcs = [
-            "./drvs/src/*.c",
-            "./main.c"
-        ]
-        incs = [
-            "./core/",
-            "./core/reg/",
-            "./drvs/includes/"
-        ]
-        dict_platform = user_collect(DIR_PLATFORM_WORKSPACE, srcs, incs)
-        self.update_component(uvprojx, key, dict_platform)
-        logging.info(f"已更新 {key} 模块")
+        # 平台 sdk 相关
+        DIR_PLAT_WORKSPACE = api.XF_PROJECT_PATH / "platform"
+        if not DIR_PLAT_WORKSPACE.exists():
+            shutil.copytree(api.XF_ROOT / "sdks/pt3210_sdk",
+                            DIR_PLAT_WORKSPACE,
+                            dirs_exist_ok=True,
+                            ignore=sdk_copy_ignore)
 
-        # freertos
-        if api.get_define("PORT_USE_FREERTOS"):
-            key = "freertos"
-            srcs = [
-                "./port/port.c",
-                "./src/*.c",
-            ]
-            incs = [
-                "./include/",
-                "./port/",
-            ]
-            dict_freertos = user_collect(DIR_PLATFORM_WORKSPACE / "freertos", srcs, incs)
-            self.update_component(uvprojx, key, dict_freertos)
-            logging.info(f"已更新 {key} 模块")
-
+        # ports
+        key = "ports"
+        md5 = calc_folder_md5(build_env["public_port"]["ports"]["path"])
+        build_env["public_port"]["ports"]["md5"] = md5
+        if md5 != fileChange["public_port"]["ports"]["md5"]:
+            self.update_component(mdk, key, build_env["public_port"][key],
+                                  api.XF_PROJECT_PATH / "xfusion",
+                                  copy_ignore=ports_copy_ignore)
+            logging.info(f">>> {key} 模块已更新")
+        else:
+            logging.info(f"=== {key} 模块无需更新")
         # user_main
         key = "user_main"
-        if fc.is_component_changed(key):
-            self.update_component(uvprojx, key, build_env[key])
-            logging.info(f"已更新 {key} 模块")
+        md5 = calc_folder_md5(build_env["user_main"]["path"])
+        build_env["user_main"]["md5"] = md5
+        if md5 != fileChange["user_main"]["md5"]:
+            self.update_component(mdk, key, build_env[key])
+            logging.info(f">>> {key} 模块已更新")
+        else:
+            logging.info(f"=== {key} 模块无需更新")
 
-        def __update_group(fc:FileChange, uvprojx:MDK, 
-                           build_env, group_name, 
+        def get_component_diff(curr, last):
+            added = {k: v for k, v in curr.items() if k not in last}
+            removed = {k: v for k, v in last.items() if k not in curr}
+            return added, removed
+
+        def __update_group(mdk:MDK, fileChange,
+                           build_env, group_name,
                            copy_path_base=None):
             ## 检查新增 / 删除
-            added, removed = fc.get_component_diff(group_name)
+            added, removed = get_component_diff(build_env[group_name],
+                                                fileChange[group_name])
             if added:
                 for key, value in added.items():
-                    fc.update_component_md5(key, group_name)
-                    self.update_component(uvprojx, key, value, copy_path_base)
-                    logging.info(f"已增加 {key} 模块")
+                    md5 = calc_folder_md5(build_env[group_name][key]["path"])
+                    build_env[group_name][key]["md5"] = md5
+                    self.update_component(mdk, key, value, copy_path_base)
+                    logging.info(f"+++ {key} 模块已增加")
 
             if removed:
                 for key, value in removed.items():
-                    uvprojx.remove_group(key)
-                    # TODO: 头文件未移除
-                    logging.info(f"已移除 {key} 模块")
+                    if copy_path_base is not None:
+                        _path = Path(copy_path_base) / key
+                        to_remove_incs = change_path_base(value["path"], _path, value["inc_dirs"])
+                    else:
+                        to_remove_incs = value["inc_dirs"]
+                    mdk.remove_include_path(to_remove_incs)
+                    mdk.remove_group(key)
+                    logging.info(f"--- {key} 模块已移除")
 
             ## 检查修改
             components = build_env[group_name]
             for key, value in components.items():
                 if key in added.keys() or key in removed.keys():
                     continue
-                if fc.is_component_changed(key, group_name):
-                    self.update_component(uvprojx, key, value, copy_path_base)
-                    logging.info(f"已更新 {key} 模块")
+
+                md5 = calc_folder_md5(build_env[group_name][key]["path"])
+                build_env[group_name][key]["md5"] = md5
+                if md5 != fileChange[group_name][key]["md5"]:
+                    self.update_component(mdk, key, value, copy_path_base)
+                    logging.info(f">>> {key} 模块已更新")
+                else:
+                    logging.info(f"=== {key} 模块无需更新")
 
         # user_components
-        __update_group(fc, uvprojx, build_env, "user_components")
+        __update_group(mdk, fileChange, build_env, "user_components")
 
         # user_dir
-        __update_group(fc, uvprojx, build_env, "user_dirs")
+        __update_group(mdk, fileChange, build_env, "user_dirs")
 
         # public_components
-        __update_group(fc, uvprojx, build_env, "public_components",
+        __update_group(mdk, fileChange, build_env, "public_components",
                        api.XF_PROJECT_PATH / "xfusion/components")
 
-        # ports
-        DIR_PORTS_XFUSION = api.XF_ROOT / "ports/pt/pt3210"
-        key = "ports"
-        dict_ports = user_collect(DIR_PORTS_XFUSION)
-        if fc.is_custom_changed(key, DIR_PORTS_XFUSION.as_posix()):
-            copy_path_base = api.XF_PROJECT_PATH / "xfusion"
-            self.update_component(uvprojx, key, dict_ports, copy_path_base)
-            logging.info(f"已更新 {key} 模块")
+        mdk.save_uvprojx(self.PATH_UVPROJX)
+        mdk.save_uvoptx(self.PATH_UVOPTX)
+        mdk.save_info(self.PATH_PROJ_INFO)
 
-        uvprojx.save(self.PATH_UVPROJX)
-        fc.save(self.DIR_PROJECT / "FileChange.json")
+        with open(self.FILE_MD5, "w") as f:
+            json.dump(build_env, f, indent=4)
 
         logging.info(f"{self.PROJECT_NAME} 工程更新完毕!")
 
