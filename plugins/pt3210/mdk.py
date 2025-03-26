@@ -133,21 +133,26 @@ class MDK:
 
         paths = self.to_project_relpaths(paths)
         if isinstance(paths, str):
-            self.ctxIncludePath.remove(paths)
+            if paths in self.info["IncludePath"]:
+                self.info["IncludePath"].remove(paths)
         elif isinstance(paths, list):
-            self.ctxIncludePath -= set(paths)
+            for v in paths:
+                if v in self.info["IncludePath"]:
+                    self.info["IncludePath"].remove(v)
 
     def add_MiscControls(self, params):
         if isinstance(params, str):
-            self.ctxMiscControls.add(params)
+            self.info["MiscControls"].append(params)
         elif isinstance(params, list):
-            self.ctxMiscControls |= set(params)
+            self.info["MiscControls"] += params
 
     def remove_MiscControls(self, params):
         if isinstance(params, str):
-            self.ctxMiscControls.remove(params)
+            self.info["MiscControls"].remove(params)
         elif isinstance(params, list):
-            self.ctxMiscControls -= set(params)
+            for v in params:
+                if v in self.info["MiscControls"]:
+                    self.info["MiscControls"].remove(v)
 
     def set_preinclude(self, path):
         path = self.to_project_relpaths(path)
