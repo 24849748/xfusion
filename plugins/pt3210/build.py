@@ -238,6 +238,7 @@ class pt3210():
         mdk.set_preinclude(api.XF_PROJECT_PATH / "build/header_config/xfconfig.h")
         mdk.set_device("PT3210-Hxxx", "PTW", "PTW.PT3210.1.0.0")
         mdk.set_sw_param(PROGRAM_INFO["PT3210-Hxxx"])
+        mdk.set_ScatterFile(self.DIR_PROJECT / "link.sct")
 
         ## 拷贝平台 sdk
         DIR_PLAT_WORKSPACE = api.XF_PROJECT_PATH / "platform"
