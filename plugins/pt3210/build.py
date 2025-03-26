@@ -2,57 +2,13 @@ import xf_build
 from xf_build import api
 import shutil
 import json
-from .FileChange import FileChange
 from .mdk import MDK
-from os.path import relpath
 import os
-from os.path import join
+import hashlib
 from pathlib import Path
 import logging
 
 from rich import print
-
-hookimpl = xf_build.get_hookimpl()
-
-def user_collect(path:Path, 
-                 srcs: list = ["*.c"], 
-                 inc_dirs: list = ["."]):
-    def deep_flatte(iterable):
-            result = []
-            stack = [iter(iterable)]
-
-            while stack:
-                current = stack[-1]
-                try:
-                    item = next(current)
-                    if isinstance(item, list):
-                        stack.append(iter(item))
-                    else:
-                        result.append(item)
-                except StopIteration:
-                    stack.pop()
-
-            return result
-
-    srcs = [list(path.glob(i)) for i in srcs]
-    srcs = deep_flatte(srcs)
-    srcs = [i.as_posix() for i in srcs]
-    inc_dirs = [(path / i).resolve().as_posix() for i in inc_dirs]
-
-    dict_build_env = {}
-    dict_build_env["path"] = path.as_posix()
-    dict_build_env["srcs"] = srcs
-    dict_build_env["inc_dirs"] = inc_dirs
-
-    return dict_build_env
-
-def collect_srcs(dir_ports):
-    srcs = []
-    for root, _, files in os.walk(dir_ports):
-        for file in files:
-            if file.endswith(".c"):
-                srcs.append(root+"/"+file)
-    return srcs
 
 def change_path_base(base_path, change_path, path):
     """
@@ -139,19 +95,15 @@ class pt3210():
 
         return {"platform":{"brief": brief}}
 
-    @hookimpl
     def build(self, args):
         logging.error("pt3210 当前不支持 xf build 命令!")
 
-    @hookimpl
     def clean(self, args):
         logging.error("pt3210 当前不支持 xf clean 命令!")
 
-    @hookimpl
     def flash(self, args):
         logging.error("pt3210 当前不支持 xf flash 命令!")
 
-    @hookimpl
     def export(self, name, args):
         if name is None:
             return
@@ -242,7 +194,6 @@ class pt3210():
 
         logging.info(f"{self.PROJECT_NAME} 工程导出完毕!")
 
-    @hookimpl
     def update(self, name, args):
         name = Path(name)
 
@@ -355,6 +306,5 @@ class pt3210():
 
         logging.info(f"{self.PROJECT_NAME} 工程更新完毕!")
 
-    @hookimpl
     def menuconfig(self, args):
         logging.error("pt3210 当前不支持 xf menuconfig 命令!")
