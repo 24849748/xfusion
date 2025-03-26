@@ -13,9 +13,7 @@ class MDK:
             "Vendor":"",
             "PackID":"",
         },
-        "flash": {
-            "FLMNAME":"PT3210_256KB_FLASH_PH", # 烧录算法名称
-        },
+        "program": {},
         "MiscControls": [
             "--C99",
             "--gnu",
@@ -98,7 +96,15 @@ class MDK:
         return info
 
     def save_uvoptx(self, name):
-        pass
+        with open(self.path_uvoptx_js2, "r", encoding="utf-8") as file:
+            uvoptx_j2 = file.read()
+
+        template = Template(uvoptx_j2)
+        info = self.__project_info_launch(self.info)
+        result = template.render(info)
+
+        with open(name, "w", encoding="utf-8") as file:
+            file.write(result)
 
     def save_uvprojx(self, name):
         self.info["MiscControls"] = list(set(self.info["MiscControls"]))
@@ -129,6 +135,9 @@ class MDK:
 
     def remove_group(self, group):
         self.info["srcs"].pop(group, None)
+
+    def set_sw_param(self, program_info:dict):
+        self.info.update({"program":program_info})
 
     def update_files(self, group, files):
         """

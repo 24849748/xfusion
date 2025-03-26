@@ -120,7 +120,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>JL2CM3</Key>
-          <Name>-U -O78 -S2 -ZTIFSpeedSel5000 -A0 -C0 -JU1 -JI127.0.0.1 -JP0 -RST0 -TO18 -TC10000000 -TP21 -TDS8007 -TDT0 -TDC1F -TIEFFFFFFFF -TIP8 -TB1 -TFE0 -FO11 -FD20000000 -FC1000 -FN1 -FF0PT3210_256KB_FLASH_PH -FS018000000 -FL040000 -FP0($$Device:{{ pack.Device }}$.\Flash\PT3210_256KB_FLASH_PH.FLM)</Name>
+          <Name>-U -O78 -S2 -ZTIFSpeedSel5000 -A0 -C0 -JU1 -JI127.0.0.1 -JP0 -RST0 -TO18 -TC10000000 -TP21 -TDS8007 -TDT0 -TDC1F -TIEFFFFFFFF -TIP8 -TB1 -TFE0 -FO11 -FD{{ program.algo_start }} -FC{{ program.algo_size }} -FN1 -FF0{{ program.flm_name }} -FS0{{ program.flm_start }} -FL0{{ program.flm_size }} -FP0($$Device:{{ pack.Device }}${{ program.flm_path }})</Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
       <Breakpoint/>

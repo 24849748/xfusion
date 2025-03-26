@@ -10,6 +10,17 @@ import logging
 
 from rich import print
 
+PROGRAM_INFO = {
+    "PT3210-Hxxx": {
+        "algo_start":"20000000",
+        "algo_size":"3000",
+        "flm_name": "PT3210_256KB_FLASH_PH",
+        "flm_path": ".\\Flash\\PT3210_256KB_FLASH_PH.FLM",
+        "flm_start": "18000000",
+        "flm_size": "40000",
+    }
+}
+
 def change_path_base(base_path, change_path, path):
     """
     将 path 中的 base_path 路径替换为 change_path 路径
@@ -225,6 +236,8 @@ class pt3210():
         mdk = MDK(self.PATH_UVPROJX, api.XF_ROOT / "plugins/pt3210")
         mdk.set_target(self.PROJECT_NAME)
         mdk.set_preinclude(api.XF_PROJECT_PATH / "build/header_config/xfconfig.h")
+        mdk.set_device("PT3210-Hxxx", "PTW", "PTW.PT3210.1.0.0")
+        mdk.set_sw_param(PROGRAM_INFO["PT3210-Hxxx"])
 
         ## 拷贝平台 sdk
         DIR_PLAT_WORKSPACE = api.XF_PROJECT_PATH / "platform"
@@ -282,6 +295,7 @@ class pt3210():
             build_env[group_name][key]["md5"] = md5
             logging.info(f"{group_name} {key} 导出完成")
 
+        mdk.save_uvoptx(self.PATH_UVOPTX)
         mdk.save_uvprojx(self.PATH_UVPROJX)
         with open(self.DIR_PROJECT / "FileChange.json", "w") as f:
             json.dump(build_env, f, indent=4)
