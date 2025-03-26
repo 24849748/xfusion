@@ -75,8 +75,9 @@ class MDK:
 
     def __project_info_launch(self, info):
         # 预处理，将 srcs 的结构转换为 js2 能使用的结构
+        info = self.info.copy()
         groups = []
-        for GroupName, files in self.info["srcs"].items():
+        for GroupName, files in info["srcs"].items():
             f = []
             for file in files:
                 if not file.strip():
@@ -112,7 +113,6 @@ class MDK:
             file.write(result)
 
     def save_uvprojx(self, name):
-        self.info["MiscControls"] = list(set(self.info["MiscControls"]))
         self.info["IncludePath"] = list(set(self.info["IncludePath"]))
         with open(self.path_uvprojx_js2, "r", encoding="utf-8") as file:
             uvprojx_j2 = file.read()
