@@ -36,23 +36,117 @@ def change_path_base(base_path, change_path, path):
 
     return replace_path
 
+def get_build_info(path_build_env):
+    """
+    1. 过滤 srcs 为空的 components
+    2. 给列表排序防止 FileChange.json 无意义的修改
+    """
+    with open(path_build_env, "r") as f:
+        build_env = json.load(f)
+
+    def __get_empty_components(data, parent_key=None):
+        """
+        收集未开启的组件，判断条件：srcs 列表为空
+        """
+        empty_components = []
+        if isinstance(data, dict):
+            if 'srcs' in data and isinstance(data['srcs'], list) and len(data['srcs']) == 0:
+                empty_components.append(parent_key)
+            for key, value in data.items():
+                empty_components.extend(__get_empty_components(value, key))
+        elif isinstance(data, list):
+        # 递归检查列表中的每个元素
+            for item in data:
+                empty_components.extend(__get_empty_components(item, parent_key))
+        return empty_components
+
+    key_to_remove = __get_empty_components(build_env)
+
+    # 移除未开启的组件、requires、cflags
+    key_to_remove.extend(["requires", "cflags"])
+
+    def __simpify(data, keys_to_remove):
+        if isinstance(data, dict):
+            # 创建一个新的字典，排除掉键在 keys_to_remove 中的键值对
+            return {k: __simpify(v, keys_to_remove) for k, v in data.items() if k not in keys_to_remove}
+        elif isinstance(data, list):
+            # 如果是列表，递归处理每个元素
+            return sorted([__simpify(item, keys_to_remove) for item in data])
+        else:
+            # 如果是其他数据类型，直接返回
+            return data
+
+    return __simpify(build_env, key_to_remove)
+
+def calc_folder_md5(path):
+    def calc_file_md5(file_path):
+        """计算单个文件的MD5值"""
+        hash_md5 = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+
+    md5_hash = hashlib.md5()
+    # 遍历文件夹
+    for root, _, files in os.walk(path):
+        for file in sorted(files):  # 排序以保证顺序一致
+            file_path = os.path.join(root, file)
+
+            # 更新文件的MD5到文件夹的总MD5
+            file_md5 = calc_file_md5(file_path)
+            md5_hash.update(file_md5.encode())
+
+    return md5_hash.hexdigest()
+
+def boards_copy_ignore(src, names):
+    exclude = {
+        "output",
+        "JlinkLog.txt",
+        "target.json",
+        "xfconfig.defaults",
+        "XFKconfig"
+    }
+    return {name for name in names if name in exclude}
+
+def sdk_copy_ignore(src, names):
+    # 屏蔽底层SDK中不需要的文件或目录
+    exclude_map = {
+        "": {"docs", ".git", ".gitignore", "examples", "README.md"}, # 根目录
+    }
+    exclude = exclude_map.get(Path(src).name, exclude_map[""])
+
+    return {name for name in names if name in exclude}
+
+def ports_copy_ignore(src, names):
+    exclude = {
+        "xf_collect.py",
+        "XFKconfig"
+    }
+    return {name for name in names if name in exclude}
+
+
 class pt3210():
-    def update_component(self, uvprojx:MDK, key, value, copy_path_base=None):
+    def update_component(self, mdk:MDK, key, value, copy_path_base=None, copy_ignore=None):
         """
         增量更新基础组件
         """
+        temp = {
+            "srcs": value["srcs"],
+            "inc_dirs": value["inc_dirs"],
+        }
 
         # 需要拷贝到本地的
         if copy_path_base is not None:
             _path = Path(copy_path_base) / key
             if _path.exists():
                 shutil.rmtree(_path)
-            shutil.copytree(value["path"], _path, dirs_exist_ok=True)
-            value["srcs"] = change_path_base(value["path"], _path, value["srcs"])
-            value["inc_dirs"] = change_path_base(value["path"], _path, value["inc_dirs"])
+            shutil.copytree(value["path"], _path, dirs_exist_ok=True, ignore=copy_ignore)
+            temp["srcs"] = change_path_base(value["path"], _path, value["srcs"])
+            temp["inc_dirs"] = change_path_base(value["path"], _path, value["inc_dirs"])
 
-        uvprojx.update_files(key, value["srcs"])
-        uvprojx.add_include_path(value["inc_dirs"])
+        mdk.update_files(key, value["srcs"])
+        mdk.add_include_path(value["inc_dirs"])
 
     def update_platform(self, uvprojx:MDK, dir_platform_ble, last_info:dict={}):
         """
@@ -105,92 +199,92 @@ class pt3210():
         logging.error("pt3210 当前不支持 xf flash 命令!")
 
     def export(self, name, args):
+        if not (api.XF_ROOT / "sdks/pt3210_sdk").exists():
+            logging.error("请先执行 'xf target -d' 下载原始 sdk 源码")
+            return
         if name is None:
             return
         name = Path(name)
 
         self.PROJECT_NAME = os.path.basename(name)
         self.DIR_PROJECT = api.XF_PROJECT_PATH / self.PROJECT_NAME
+        self.PATH_UVOPTX = self.DIR_PROJECT / f"{self.PROJECT_NAME}.uvoptx"
         self.PATH_UVPROJX = self.DIR_PROJECT / f"{self.PROJECT_NAME}.uvprojx"
         self.PATH_BUILD_ENV = api.XF_PROJECT_PATH / "build/build_environ.json"
 
-        fc = FileChange(self.PATH_BUILD_ENV)
-        # 平台 sdk
-        ## 拷贝 project/template 目录到当前工作区
-        shutil.copytree(api.XF_TARGET_PATH / "project", 
-                        self.DIR_PROJECT, 
-                        dirs_exist_ok=True)
+        # build_environ 预处理：
+        build_env = get_build_info(self.PATH_BUILD_ENV)
+        build_env["public_port"]["ports"] = build_env["public_port"].pop("pt3210")
 
-        ## 重命名 uvprojx
-        os.rename(self.DIR_PROJECT / "template.uvprojx", self.PATH_UVPROJX)
+        # 拷贝 boards
+        shutil.copytree(api.XF_TARGET_PATH,
+                        self.DIR_PROJECT,
+                        dirs_exist_ok=True,
+                        ignore=boards_copy_ignore)
 
-        uvprojx = MDK(self.PATH_UVPROJX)
-        uvprojx.set_target(self.PROJECT_NAME)
-        uvprojx.set_preinclude(api.XF_PROJECT_PATH / "build/header_config/xfconfig.h")
+        mdk = MDK(self.PATH_UVPROJX)
+        mdk.set_target(self.PROJECT_NAME)
+        mdk.set_preinclude(api.XF_PROJECT_PATH / "build/header_config/xfconfig.h")
 
-        ## 拷贝 platform 目录
-        DIR_PLATFORM_WORKSPACE = api.XF_PROJECT_PATH / "platform"
-        shutil.copytree(api.XF_TARGET_PATH / "platform", 
-                        DIR_PLATFORM_WORKSPACE, 
-                        dirs_exist_ok=True)
+        ## 拷贝平台 sdk
+        DIR_PLAT_WORKSPACE = api.XF_PROJECT_PATH / "platform"
+        shutil.copytree(api.XF_ROOT / "sdks/pt3210_sdk", 
+                        DIR_PLAT_WORKSPACE, 
+                        dirs_exist_ok=True,
+                        ignore=sdk_copy_ignore)
+        mdk.add_include_path([
+            DIR_PLAT_WORKSPACE / "core/reg",
+            DIR_PLAT_WORKSPACE / "core",
+            DIR_PLAT_WORKSPACE / "drivers/api",
+        ])
+        mdk.update_files("core", [
+            self.DIR_PROJECT / "startup.s",
+            self.DIR_PROJECT / "main.c",
+        ])
 
-        srcs_platform = [
-            "./drvs/src/*.c",
-            "./main.c"
-        ]
-        incs_platform = [
-            "core/",
-            "core/reg/",
-            "drvs/includes/"
-        ]
-        dict_platform = user_collect(DIR_PLATFORM_WORKSPACE, srcs_platform, incs_platform)
-        key = "platform"
-        self.update_component(uvprojx, key, dict_platform)
-        fc.update_custom_md5(key, DIR_PLATFORM_WORKSPACE.as_posix())
-        logging.info(f"{key} 部分导出完成")
-
-        with open(self.PATH_BUILD_ENV, "r") as f:
-            build_env = json.load(f)
+        ## export 逻辑是 sdk -> 工程 单向更新，移植阶段可屏蔽
+        # port
+        self.update_component(mdk, "ports", build_env["public_port"]["ports"],
+                              copy_path_base = api.XF_PROJECT_PATH / "xfusion",
+                              copy_ignore=ports_copy_ignore)
+        md5 = calc_folder_md5(build_env["public_port"]["ports"]["path"])
+        build_env["public_port"]["ports"]["md5"] = md5
+        logging.info(f"ports 导出完成")
 
         # user_main
-        key = "user_main"
-        self.update_component(uvprojx, key, build_env[key])
-        fc.update_component_md5(key)
-        logging.info(f"{key} 部分导出完成")
+        self.update_component(mdk, "user_main", build_env["user_main"])
+        md5 = calc_folder_md5(build_env["user_main"]["path"])
+        build_env["user_main"]["md5"] = md5
+        logging.info(f"user_main 导出完成")
 
         # user_components
         group_name = "user_components"
         for key, value in build_env[group_name].items():
-            self.update_component(uvprojx, key, value)
-            fc.update_component_md5(key, group_name)
-            logging.info(f"{key} 部分导出完成")
+            self.update_component(mdk, key, value)
+            md5 = calc_folder_md5(build_env[group_name][key]["path"])
+            build_env[group_name][key]["md5"] = md5
+            logging.info(f"{group_name} {key} 导出完成")
 
         # user_dirs
         group_name = "user_dirs"
         for key, value in build_env[group_name].items():
-            self.update_component(uvprojx, key, value)
-            fc.update_component_md5(key, group_name)
-            logging.info(f"{key} 部分导出完成")
+            self.update_component(mdk, key, value)
+            md5 = calc_folder_md5(build_env[group_name][key]["path"])
+            build_env[group_name][key]["md5"] = md5
+            logging.info(f"{group_name} {key} 导出完成")
 
         # public_components
         group_name = "public_components"
         for key, value in build_env[group_name].items():
-            self.update_component(uvprojx, key, value,
+            self.update_component(mdk, key, value,
                                   copy_path_base = api.XF_PROJECT_PATH / "xfusion/components")
-            fc.update_component_md5(key, group_name)
-            logging.info(f"{key} 部分导出完成")
+            md5 = calc_folder_md5(build_env[group_name][key]["path"])
+            build_env[group_name][key]["md5"] = md5
+            logging.info(f"{group_name} {key} 导出完成")
 
-        # ports
-        DIR_PORTS_XFUSION = api.XF_ROOT / "ports/pt/pt3210"
-        dict_ports = user_collect(DIR_PORTS_XFUSION)
-        key = "ports"
-        copy_path_base = api.XF_PROJECT_PATH / "xfusion"
-        self.update_component(uvprojx, key, dict_ports, copy_path_base)
-        fc.update_custom_md5(key, DIR_PORTS_XFUSION.as_posix())
-        logging.info(f"{key} 部分导出完成")
-
-        uvprojx.save(self.PATH_UVPROJX)
-        fc.save(self.DIR_PROJECT / "FileChange.json")
+        mdk.save_uvprojx(self.PATH_UVPROJX)
+        with open(self.DIR_PROJECT / "FileChange.json", "w") as f:
+            json.dump(build_env, f, indent=4)
 
         logging.info(f"{self.PROJECT_NAME} 工程导出完毕!")
 
