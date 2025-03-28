@@ -110,7 +110,8 @@ def boards_copy_ignore(src, names):
 def sdk_copy_ignore(src, names):
     # 屏蔽底层SDK中不需要的文件或目录
     exclude_map = {
-        "": {"docs", ".git", ".gitignore", "examples", "README.md"}, # 根目录
+        "": {"docs", ".git", ".gitignore", "examples", "modules", "README.md"}, # 根目录
+        "core": {"pt3210.h", "mdk"}, # core 目录
     }
     exclude = exclude_map.get(Path(src).name, exclude_map[""])
 
