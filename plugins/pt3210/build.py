@@ -244,6 +244,10 @@ class pt3210():
             self.DIR_PROJECT / "startup.s",
             self.DIR_PROJECT / "main.c",
         ])
+        mdk.update_files("drivers", [
+            DIR_PLAT_WORKSPACE / "drivers/api/drvs.h",
+            DIR_PLAT_WORKSPACE / "drivers/lib/drvs.lib"
+        ])
 
         ## export 逻辑是 sdk -> 工程 单向更新，移植阶段可屏蔽
         # port
