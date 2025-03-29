@@ -225,9 +225,14 @@ class pt3210():
         mdk = MDK(self.PATH_UVPROJX, api.XF_ROOT / "plugins/pt3210")
         mdk.set_target(self.PROJECT_NAME)
         mdk.set_preinclude(api.XF_PROJECT_PATH / "build/header_config/xfconfig.h")
-        mdk.set_device("PT3210-Hxxx", "PTW", "PTW.PT3210.1.0.0")
-        mdk.set_sw_param("0x20000000", "0x3000", ".\\Flash\\PT3210_256KB_FLASH_PH.FLM", 
-                        "0x18000000", "0x40000")
+        if api.get_define("PT3210_Ixxx") == "y":
+            mdk.set_device("PT3210-Ixxx", "PTW", "PTW.PT3210.1.0.0")
+            mdk.set_sw_param("0x20000000", "0x3000", ".\\Flash\\PT3210_512KB_FLASH_PH.FLM", 
+                            "0x18000000", "0x80000")
+        else:
+            mdk.set_device("PT3210-Hxxx", "PTW", "PTW.PT3210.1.0.0")
+            mdk.set_sw_param("0x20000000", "0x3000", ".\\Flash\\PT3210_512KB_FLASH_PH.FLM", 
+                            "0x18000000", "0x40000")
         mdk.set_ScatterFile(self.DIR_PROJECT / "link.sct")
 
         ## 拷贝平台 sdk
@@ -325,6 +330,15 @@ class pt3210():
         mdk = MDK(self.PATH_UVPROJX, api.XF_ROOT / "plugins/pt3210", proj_info)
         build_env = get_build_info(self.PATH_BUILD_ENV)
         build_env["public_port"]["ports"] = build_env["public_port"].pop("pt3210")
+
+        if api.get_define("PT3210_Ixxx") == "y":
+            mdk.set_device("PT3210-Ixxx", "PTW", "PTW.PT3210.1.0.0")
+            mdk.set_sw_param("0x20000000", "0x3000", ".\\Flash\\PT3210_512KB_FLASH_PH.FLM", 
+                            "0x18000000", "0x80000")
+        else:
+            mdk.set_device("PT3210-Hxxx", "PTW", "PTW.PT3210.1.0.0")
+            mdk.set_sw_param("0x20000000", "0x3000", ".\\Flash\\PT3210_512KB_FLASH_PH.FLM", 
+                            "0x18000000", "0x40000")
 
         # 平台 sdk 相关
         DIR_PLAT_WORKSPACE = api.XF_PROJECT_PATH / "platform"
