@@ -10,7 +10,9 @@
 #include <stdio.h>
 #include "xfusion.h"
 
-#if defined(CONFIG_PORT_USE_FREERTOS)
+extern void sys_init(void);
+
+#if defined(CONFIG_XF_OSAL_ENABLE)
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -29,6 +31,7 @@ static void xfusion_task(void *pvParameters)
 
 int main(void)
 {
+    sys_init();
     xTaskCreateStatic( xfusion_task,
                         "xfusion_task",
                         CONFIG_PORT_FREERTOS_XF_TASK_STACK_SIZE,
@@ -44,6 +47,7 @@ int main(void)
 
 int main(void)
 {
+    sys_init();
     xfusion_init();
 
     while (1)

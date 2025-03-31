@@ -83,7 +83,6 @@ __Vectors_Size  EQU  __Vectors_End - __Vectors
 ;Reset Handler----------------------------------------------
 Reset_Handler   PROC
                 EXPORT  Reset_Handler                      [WEAK]
-                IMPORT  sys_init
                 IMPORT  __main
 
                 ;SYSCFG->SRAMPSICTR.Word = 0;
@@ -101,9 +100,6 @@ Reset_Handler   PROC
                 MOVS    R0, #00
                 LDR     R1, =0x4007C040 
                 STR     R0, [R1]
-
-                LDR     R1, =sys_init
-                BLX     R1
 
                 LDR     R0, =__main
                 BX      R0
