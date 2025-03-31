@@ -144,8 +144,8 @@ class pt3210():
             temp["srcs"] = change_path_base(value["path"], _path, value["srcs"])
             temp["inc_dirs"] = change_path_base(value["path"], _path, value["inc_dirs"])
 
-        mdk.update_files(key, value["srcs"])
-        mdk.add_include_path(value["inc_dirs"])
+        mdk.update_files(key, temp["srcs"])
+        mdk.add_include_path(temp["inc_dirs"])
 
     def update_platform(self, uvprojx:MDK, dir_platform_ble, last_info:dict={}):
         """
