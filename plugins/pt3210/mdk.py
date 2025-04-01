@@ -116,7 +116,7 @@ class MDK:
             file.write(result)
 
     def save_uvprojx(self, name):
-        self.info["IncludePath"] = list(set(self.info["IncludePath"]))
+        self.info["IncludePath"] = sorted(list(set(self.info["IncludePath"])))
         with open(self.path_uvprojx_js2, "r", encoding="utf-8") as file:
             uvprojx_j2 = file.read()
 
