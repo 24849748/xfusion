@@ -61,7 +61,7 @@ class MDK:
             file_type = "1"
         elif file_suffix == ".s" or file_suffix == ".S":
             file_type = "2"
-        elif file_suffix == ".o":
+        elif file_suffix == ".o" or file_suffix == ".m":
             file_type = "3"
         elif file_suffix == ".lib":
             file_type = "4"

@@ -186,47 +186,6 @@ class pt3210():
 
         return is_osal_enable
 
-    def update_platform(self, uvprojx:MDK, dir_platform_ble, last_info:dict={}):
-        """
-        只跟踪 menuconfig 配置的变化，不跟踪文件夹内容变化
-        """
-
-        ble_enable = False
-        use_litelib = False
-        if api.get_define("PORT_BLE_ENABLE") == "y":
-            ble_enable = True
-            if api.get_define("PORT_BLE_CAPABILITY_1C_M_S") == "y":
-                brief = "use ble.lib, 1 connection, master or slave"
-                name_ble_lib = "ble6.lib"
-            elif api.get_define("PORT_BLE_CAPABILITY_3C_M_S") == "y":
-                brief = "use ble.lib, 3 connections, master or slave"
-                name_ble_lib = "ble6.lib"
-            elif api.get_define("PORT_BLE_CAPABILITY_1C_S") == "y":
-                brief = "use blelite.lib, 1 connection, only slave"
-                name_ble_lib = "ble6_lite.lib"
-                use_litelib = True
-        else:
-            ble_enable = False
-            use_litelib = False
-            brief = "without ble"
-
-        if last_info.get("brief") != brief:
-            # 有变化
-            if ble_enable:
-                uvprojx.set_blelib((dir_platform_ble / "lib" / name_ble_lib).as_posix())
-                uvprojx.add_include_path((dir_platform_ble / "api").as_posix())
-                uvprojx.add_include_path((dir_platform_ble / "prf").as_posix())
-            else:
-                uvprojx.remove_group("ble")
-                uvprojx.remove_include_path((dir_platform_ble / "api").as_posix())
-                uvprojx.remove_include_path((dir_platform_ble / "prf").as_posix())
-
-            _path = (self.DIR_PROJECT / "link_xip.sct").as_posix()
-            self.gen_sct_file(_path, brief, ble_enable, use_litelib)
-            uvprojx.set_ScatterFile(_path)
-
-        return {"platform":{"brief": brief}}
-
     def build(self, args):
         logging.error("pt3210 当前不支持 xf build 命令!")
 
@@ -291,6 +250,7 @@ class pt3210():
         ])
         mdk.update_files("drivers", [
             DIR_PLAT_WORKSPACE / "drivers/api/drvs.h",
+            DIR_PLAT_WORKSPACE / "drivers/api/symdefs.m",
             DIR_PLAT_WORKSPACE / "drivers/lib/drvs.lib"
         ])
 
