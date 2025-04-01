@@ -112,6 +112,7 @@ def sdk_copy_ignore(src, names):
     exclude_map = {
         "": {"docs", ".git", ".gitignore", "examples", "modules", "README.md"}, # 根目录
         "core": {"pt3210.h", "mdk"}, # core 目录
+        "freertos": {"FreeRTOSConfig.h"}, # 使用 ports 层的配置文件
     }
     exclude = exclude_map.get(Path(src).name, exclude_map[""])
 
@@ -146,6 +147,44 @@ class pt3210():
 
         mdk.update_files(key, temp["srcs"])
         mdk.add_include_path(temp["inc_dirs"])
+
+    def update_rtos(self, mdk:MDK, last_info:dict={}):
+        # freertos
+        freertos = {
+            "srcs": [
+                api.XF_PROJECT_PATH / "xfusion/ports/FreeRTOSConfig.h",
+                # api.XF_PROJECT_PATH / "platform/freertos/port/FreeRTOSConfig.h",
+                api.XF_PROJECT_PATH / "platform/freertos/src/croutine.c",
+                api.XF_PROJECT_PATH / "platform/freertos/src/event_groups.c",
+                api.XF_PROJECT_PATH / "platform/freertos/src/list.c",
+                api.XF_PROJECT_PATH / "platform/freertos/src/queue.c",
+                api.XF_PROJECT_PATH / "platform/freertos/src/stream_buffer.c",
+                api.XF_PROJECT_PATH / "platform/freertos/src/tasks.c",
+                api.XF_PROJECT_PATH / "platform/freertos/src/timers.c",
+                api.XF_PROJECT_PATH / "platform/freertos/src/port.c",
+                api.XF_PROJECT_PATH / "platform/freertos/src/heap_4.c",
+            ],
+            "incs" : [
+                # FreeRTOS 源码 include 的路径是 xxx.h，xf_osal_internal.h include 的路径是 freertos/xxx.h
+                api.XF_PROJECT_PATH / "platform/",
+                api.XF_PROJECT_PATH / "platform/freertos",
+            ]
+        }
+
+        if api.get_define("XF_OSAL_ENABLE") == "y":
+            is_osal_enable = True
+        else:
+            is_osal_enable = False
+
+        if last_info != is_osal_enable:
+            if is_osal_enable:
+                mdk.update_files("freertos", freertos["srcs"])
+                mdk.add_include_path(freertos["incs"])
+            else:
+                mdk.remove_group("freertos")
+                mdk.remove_include_path(freertos["incs"])
+
+        return is_osal_enable
 
     def update_platform(self, uvprojx:MDK, dir_platform_ble, last_info:dict={}):
         """
@@ -255,6 +294,9 @@ class pt3210():
             DIR_PLAT_WORKSPACE / "drivers/lib/drvs.lib"
         ])
 
+        is_osal_enable = self.update_rtos(mdk)
+        build_env.update({"osal_enable":is_osal_enable})
+        logging.info(f"{os.environ['XF_TARGET']} 平台导出成功")
         ## export 逻辑是 sdk -> 工程 单向更新，移植阶段可屏蔽
         # port
         self.update_component(mdk, "ports", build_env["public_port"]["ports"],
@@ -359,6 +401,10 @@ class pt3210():
             logging.info(f">>> {key} 模块已更新")
         else:
             logging.info(f"=== {key} 模块无需更新")
+
+        is_osal_enable = self.update_rtos(mdk, fileChange["osal_enable"])
+        build_env.update({"osal_enable":is_osal_enable})
+
         # user_main
         key = "user_main"
         md5 = calc_folder_md5(build_env["user_main"]["path"])
