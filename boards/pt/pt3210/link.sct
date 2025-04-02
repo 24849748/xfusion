@@ -24,7 +24,7 @@ LR_IROM1 0x18008000 0x00038000
     ; 24KB - 256B - 8B = 23736B
     RW_IRAM2 +0
     {
-        ;* (ram_func)
+        * (ram_func)
         .ANY (+RW +ZI)  ; RW-Data，ZI-Data
     }
 
