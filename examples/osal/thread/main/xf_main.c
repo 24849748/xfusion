@@ -104,6 +104,8 @@ static void task1(void *argument)
 
     XF_OSAL_CHECK(xf_osal_delay_ms(1000));
 
+    bool end = false;
+
     while (1) {
         state = xf_osal_thread_get_state(thread[0]);
         switch (state) {
@@ -113,12 +115,16 @@ static void task1(void *argument)
         case XF_OSAL_READY:
         case XF_OSAL_RUNNING: {
             XF_LOGI(TAG, "task1: task2 has resumed.");
-            goto l_end;
+            end = true;
         }
         default: {
             XF_LOGI(TAG, "task1: An error occurred while resuming task2.");
-            goto l_end;
+            end = true;
         } break;
+        }
+
+        if (end) {
+            goto l_end;
         }
         XF_OSAL_CHECK(xf_osal_delay_ms(1000));
     }
