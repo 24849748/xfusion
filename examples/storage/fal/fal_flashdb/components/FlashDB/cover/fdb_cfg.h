@@ -41,6 +41,8 @@
 
 /* Using XF_FAL storage mode */
 #define FDB_USING_XF_FAL_MODE
+#define FDB_WRITE_GRAN                  32
+#define FDB_KV_CACHE_TABLE_SIZE         0
 
 /* Using file storage mode by LIBC file API, like fopen/fread/fwrte/fclose */
 /* #define FDB_USING_FILE_LIBC_MODE */
