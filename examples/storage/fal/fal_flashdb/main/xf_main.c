@@ -17,9 +17,13 @@
 /* ==================== [Includes] ========================================== */
 
 #include "xf_utils.h"
-#include "xf_osal.h"
 #include "xf_fal.h"
+#include "xf_sys.h"
 #include "flashdb.h"
+
+#if defined(CONFIG_XF_OSAL_ENABLE)
+#include "xf_osal.h"
+#endif
 
 /* ==================== [Defines] =========================================== */
 
@@ -32,7 +36,9 @@
 
 /* ==================== [Static Prototypes] ================================= */
 
+#ifdef FDB_USING_TSDB
 static fdb_time_t get_time(void);
+#endif
 static void lock(fdb_db_t db);
 static void unlock(fdb_db_t db);
 
@@ -76,12 +82,17 @@ static struct fdb_default_kv_node default_kv_table[] = {
 };
 /* KVDB object */
 static struct fdb_kvdb kvdb = {0};
+
+#ifdef FDB_USING_TSDB
 /* TSDB object */
 struct fdb_tsdb tsdb = {0};
 /* counts for simulated timestamp */
 static int counts = 0;
+#endif
 
+#if defined(CONFIG_XF_OSAL_ENABLE)
 static xf_osal_mutex_t s_mutex = NULL;
+#endif
 
 /* ==================== [Macros] ============================================ */
 
@@ -120,6 +131,7 @@ void xf_main(void)
 
 /* ==================== [Static Functions] ================================== */
 
+#ifdef FDB_USING_TSDB
 static fdb_time_t get_time(void)
 {
     /* Using the counts instead of timestamp.
@@ -127,6 +139,7 @@ static fdb_time_t get_time(void)
      */
     return ++counts;
 }
+#endif /* FDB_USING_TSDB */
 
 static int flashdb_demo(void)
 {
@@ -196,6 +209,8 @@ static int flashdb_demo(void)
     return 0;
 }
 
+#if defined(CONFIG_XF_OSAL_ENABLE)
+
 static void lock(fdb_db_t db)
 {
     UNUSED(db);
@@ -221,3 +236,21 @@ static void unlock(fdb_db_t db)
     }
     return;
 }
+
+#else
+
+static void lock(fdb_db_t db)
+{
+    UNUSED(db);
+    xf_sys_interrupt_disable();
+    return;
+}
+
+static void unlock(fdb_db_t db)
+{
+    UNUSED(db);
+    xf_sys_interrupt_enable();
+    return;
+}
+
+#endif
