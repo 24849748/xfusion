@@ -2,7 +2,7 @@ import xf_build
 
 srcs = [
     "FlashDB/src/fdb_file.c",
-    "FlashDB/src/fdb_kvdb.c",
+    "cover/fdb_kvdb.c",
     "FlashDB/src/fdb_tsdb.c",
     "samples/*.c",
     "cover/fdb.c",
