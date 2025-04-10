@@ -10,21 +10,21 @@ config PORT_FDB_XF_FAL_KVDB_PARTITION_NAME
     default "fdb_kvdb"
 
 config PORT_FDB_XF_FAL_KVDB_PARTITION_OFFSET
-    int "KVDB partition offset."
+    hex "KVDB partition offset."
     default 0
 
 config PORT_FDB_XF_FAL_KVDB_PARTITION_LENGTH
-    int "KVDB partition length."
-    default 40960
+    hex "KVDB partition length."
+    default 0xA000
 
 config PORT_FDB_XF_FAL_TSDB_PARTITION_NAME
     string "TSDB partition name."
     default "fdb_tsdb"
 
 config PORT_FDB_XF_FAL_TSDB_PARTITION_OFFSET
-    int "TSDB partition offset."
-    default 40960
+    hex "TSDB partition offset."
+    default 0xA000
 
 config PORT_FDB_XF_FAL_TSDB_PARTITION_LENGTH
-    int "TSDB partition length."
-    default 40960
+    hex "TSDB partition length."
+    default 0xA000
